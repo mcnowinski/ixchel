@@ -51,8 +51,10 @@ class SSH:
             'stderr': [],
             'pid': None
         }
+        command_suffix = '>& /tmp/ixchel.log &'
         try:
-            stdin, stdout, stderr = self.ssh.exec_command('%s &' % command)
+            stdin, stdout, stderr = self.ssh.exec_command(
+                '%s %s' % (command, command_suffix))
             result['stdout'] = stdout.readlines()
             result['stderr'] = stderr.readlines()
             if len(result['stdout']) > 0:
@@ -206,9 +208,11 @@ class Telescope:
     def test(self, interface):
         results = self.command(interface.get_command(),
                                interface.is_background())
+        #pid = results['pid']
         result = results['response']
         # parse the result and assign values to output valuse
         interface.assign_outputs(result)
+        return results['pid']
 
     def get_precipitation(self, interface):
         self.getter(interface)
