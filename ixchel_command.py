@@ -1168,7 +1168,7 @@ class IxchelCommand:
             while(index < count):
                 # check for abort
                 if self.getDoAbort():
-                    if self.config.get('configuration', 'shutterfix', False):
+                    if self.config.get('configuration', 'shutterfix', 'False') == 'True':
                         #self.logger.info('Closing the shutter.') # remove this
                         self._close_shutter(user)                    
                     self.slack.send_message('Image sequence aborted.')
@@ -1198,8 +1198,7 @@ class IxchelCommand:
                     raise Exception(
                         'Failed to send the file (%s) to Slack.' % (path + fname))
                 index = index + 1
-            if self.config.get('configuration', 'shutterfix', False):
-                #self.logger.info('Closing the shutter.') # remove this
+            if self.config.get('configuration', 'shutterfix', 'False') == 'True':
                 self._close_shutter(user)
 
         except Exception as e:
