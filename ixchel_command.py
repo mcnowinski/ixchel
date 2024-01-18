@@ -28,8 +28,14 @@ import string
 import numpy as np
 import math
 import matplotlib
+from backports.datetime_fromisoformat import MonkeyPatch
 
-matplotlib.use("Agg")  # don't need display
+# Ensure Python3.6 compatibility
+MonkeyPatch.patch_fromisoformat()
+
+# Don't need display...
+matplotlib.use("Agg")
+
 
 find_format_string = """[
 	{{
@@ -123,8 +129,8 @@ class IxchelCommand:
             if command:
                 user = self.slack.get_user_by_id(message.get("user"))
                 self.logger.info(
-                    "Received the command: %s from %s."
-                    % (command.group(0), user.get("name"))
+                    "Received the command: %s from %s.", 
+                    command.group(0), user.get("name")
                 )
                 try:
                     if (
@@ -183,8 +189,8 @@ class IxchelCommand:
         )
 
     def handle_error(self, command, error):
-        self.logger.error("Command failed (%s). %s" % (command, error))
-        self.slack.send_message("Error. Command (%s) failed." % command)
+        self.logger.error("Command failed (%s). %s", command, error)
+        self.slack.send_message(f"Error. Command ({command}) failed.")
 
     def _track(self, on_off):
         try:
@@ -201,7 +207,7 @@ class IxchelCommand:
             on_off = command.group(1)
             self._track(on_off)
             self.slack.send_message(
-                "Telescope tracking is %s." % on_off.strip().lower()
+                f"Telescope tracking is {on_off.strip().lower()}."
             )
         except Exception as e:
             self.handle_error(command.group(0), "Exception (%s)." % e)
@@ -216,7 +222,7 @@ class IxchelCommand:
             # create a command that applies the specified values
             return math.ceil(ha) != 0 or math.ceil(dec) != 0
         except Exception as e:
-            raise Exception("Get track command failed.")
+            raise Exception("Get track command failed.") from e
 
     def get_track(self, command, user):
         try:
@@ -235,8 +241,7 @@ class IxchelCommand:
             dRA = command.group(1).strip()
             dDEC = command.group(2).strip()
             self.slack.send_message(
-                "%s is offsetting the telescope by dRA=%s/dDEC=%s. Please wait..."
-                % (self.config.get("slack", "bot_name"), dRA, dDEC)
+                f"{self.config.get('slack', 'bot_name')} is offsetting the telescope by dRA={dRA}/dDEC={dDEC}. Please wait..."
             )
             telescope_interface = TelescopeInterface("offset")
             # assign values
@@ -246,7 +251,7 @@ class IxchelCommand:
             self.telescope.point(telescope_interface)
             # send output to Slack
             self.slack.send_message(
-                "Telescope successfully offset by dRA=%s/dDEC=%s." % (dRA, dDEC)
+                f"Telescope successfully offset by dRA={dRA}/dDEC={dDEC}."
             )
         except Exception as e:
             self.handle_error(command.group(0), "Exception (%s)." % e)
@@ -273,7 +278,7 @@ class IxchelCommand:
             self.telescope.point(telescope_interface)
             # send output to Slack
             self.slack.send_message(
-                "Telescope successfully pointed to RA=%s/DEC=%s." % (ra, dec)
+                f"Telescope successfully pointed to RA={ra}/DEC={dec}."
             )
             # regex to format RA/dec for filename
             _ra = re.sub("^(\d{1,2}):(\d{2}):(\d{2}).+", r"\1h\2m\3s", ra)
@@ -316,7 +321,7 @@ class IxchelCommand:
             self.telescope.point(telescope_interface)
             # send output to Slack
             self.slack.send_message(
-                "Telescope successfully pointed to %s." % skyObject.name
+                f"Telescope successfully pointed to {skyObject.name}."
             )
             self.set_target(skyObject.name)
         except Exception as e:
@@ -377,7 +382,7 @@ class IxchelCommand:
             telescope_interface.set_input_value("dec", dec)
             self.telescope.point(telescope_interface)
             self.slack.send_message(
-                "Telescope successfully pointed to RA=%s/DEC=%s." % (ra, dec)
+                f"Telescope successfully pointed to RA={ra}/DEC={dec}."
             )
 
             # get current filter setting
@@ -386,7 +391,7 @@ class IxchelCommand:
             if original_filter != filter:
                 result = self._set_filter(filter)
                 self.logger.info(
-                    "Filter changed from %s to %s." % (original_filter, result)
+                    "Filter changed from %s to %s.", original_filter, result
                 )
 
             # start pinpoint iterations
@@ -405,9 +410,9 @@ class IxchelCommand:
                     if original_filter != filter:
                         result = self._set_filter(filter)
                         self.logger.info(
-                            "Filter changed from %s to %s." % (original_filter, result)
+                            "Filter changed from %s to %s.", original_filter, result
                         )
-                    self.logger.error("Error. Image command failed (%s)." % fname)
+                    self.logger.error("Error. Image command failed (%s).", fname)
                     return False
 
                 telescope_interface = TelescopeInterface("pinpoint")
@@ -443,7 +448,7 @@ class IxchelCommand:
                     if original_filter != filter:
                         result = self._set_filter(filter)
                         self.logger.info(
-                            "Filter changed from %s to %s." % (original_filter, result)
+                            "Filter changed from %s to %s.", original_filter, result
                         )
                     return True
                 elif (
@@ -468,33 +473,35 @@ class IxchelCommand:
                     if original_filter != filter:
                         result = self._set_filter(filter)
                         self.logger.info(
-                            "Filter changed from %s to %s." % (original_filter, result)
+                            "Filter changed from %s to %s.", original_filter, result
                         )
                     return False
 
                 iteration += 1
 
             self.logger.error(
-                "Pinpoint exceeded maximum number of iterations (%d)." % max_tries
+                "Pinpoint exceeded maximum number of iterations (%d).", max_tries
             )
             self.hdr = hdr  # restore HDR setting
             # change filter back to original_filter
             if original_filter != filter:
                 result = self._set_filter(filter)
                 self.logger.info(
-                    "Filter changed from %s to %s." % (original_filter, result)
+                    "Filter changed from %s to %s.", original_filter, result
                 )
             return False
 
         except Exception as e:
+
             self.hdr = hdr
             # change filter back to original_filter
             if original_filter != filter:
                 result = self._set_filter(filter)
                 self.logger.info(
-                    "Filter changed from %s to %s." % (original_filter, result)
+                    "Filter changed from %s to %s.", original_filter, result
                 )
-            raise Exception("Failed to _pinpoint the target")
+            
+            raise Exception("Failed to _pinpoint the target") from e
 
     def pinpoint(self, command, user):
         try:
@@ -530,12 +537,12 @@ class IxchelCommand:
             success = self._pinpoint(user, skyObject.ra, skyObject.dec, time, filter)
             if success:
                 self.slack.send_message(
-                    "Telescope successfully pinpointed to %s." % skyObject.name
+                    f"Telescope successfully pinpointed to {skyObject.name}."
                 )
                 self.set_target(skyObject.name)
             else:
                 self.slack.send_message(
-                    "Telescope failed to pinpoint to %s." % skyObject.name
+                    f"Telescope failed to pinpoint to {skyObject.name}."
                 )
         except Exception as e:
             self.handle_error(command.group(0), "Exception (%s)." % e)
@@ -562,7 +569,7 @@ class IxchelCommand:
             success = self._pinpoint(user, ra, dec, time, filter)
             if success:
                 self.slack.send_message(
-                    "Telescope successfully pinpointed to RA=%s/DEC=%s." % (ra, dec)
+                    f"Telescope successfully pinpointed to RA={ra}/DEC={dec}."
                 )
                 # regex to format RA/dec for filename
                 _ra = re.sub("^(\d{1,2}):(\d{2}):(\d{2}).+", r"\1h\2m\3s", ra)
@@ -570,7 +577,7 @@ class IxchelCommand:
                 self.set_target("%s%s" % (_ra, _dec))
             else:
                 self.slack.send_message(
-                    "Telescope successfully pinpointed to RA=%s/DEC=%s." % (ra, dec)
+                    f"Telescope successfully pinpointed to RA={ra}/DEC={dec}."
                 )
         except Exception as e:
             self.handle_error(command.group(0), "Exception (%s)." % e)
@@ -672,9 +679,9 @@ class IxchelCommand:
     def get_help(self, command, user):
         slack_user = self.slack.get_user_by_id(user["id"]).get("name", user["id"])
         help_message = (
-            self.config.get("slack", "help_message").replace("\"", "").format(
-                bot_name=self.bot_name, user=slack_user
-            )
+            self.config.get("slack", "help_message")
+            .replace('"', "")
+            .format(bot_name=self.bot_name, user=slack_user)
             + "\n"
         )
         for cmd in sorted(self.commands, key=lambda i: i["regex"]):
@@ -851,7 +858,7 @@ class IxchelCommand:
             # query telescope
             self.telescope.set_lights(telescope_interface)
         except:
-            self.logger.error("Failed to turn the lights %s." % on_off)
+            self.logger.error("Failed to turn the lights %s.", on_off)
             raise
 
     def set_lights(self, command, user):
@@ -981,7 +988,7 @@ class IxchelCommand:
                 "Configuration setting `%s` is %s." % (setting, value)
             )
         except Exception as e:
-            self.logger.error("Failed to get the configuration setting (%s)." % setting)
+            self.logger.error("Failed to get the configuration setting (%s).", setting)
             raise
 
     def get_hdr(self, command, user):
@@ -1119,7 +1126,7 @@ class IxchelCommand:
             num = telescope_interface.get_output_value("num")
             return filters[num - 1]
         except Exception as e:
-            self.logger.error("Failed to set the filter to %s." % filter)
+            self.logger.error("Failed to set the filter to %s.", filter)
             raise
 
     def set_filter(self, command, user):
@@ -1173,7 +1180,7 @@ class IxchelCommand:
             pos = telescope_interface.get_output_value("pos")
             return pos
         except Exception as e:
-            self.logger.error("Exception. Failed to set the focus to %d." % pos)
+            self.logger.error("Exception. Failed to set the focus to %d.", pos)
             raise
 
     def set_focus(self, command, user):
@@ -1573,11 +1580,11 @@ class IxchelCommand:
             self.telescope.get_lock(telescope_interface)
             # assign values
             _user = telescope_interface.get_output_value("user")
-            self.logger.info("Telescope is locked by %s." % _user)
+            self.logger.info("Telescope is locked by %s.", _user)
             # assign values
             return self.slack.get_user_by_id(_user).get("name", _user)
         except Exception as e:
-            self.logger.error("Could not get telescope lock info. Exception (%s)." % e)
+            self.logger.error("Could not get telescope lock info. Exception (%s).", e)
         return "unknown"
 
     def is_locked_by(self, user):
@@ -1587,11 +1594,11 @@ class IxchelCommand:
             self.telescope.get_lock(telescope_interface)
             # assign values
             _user = telescope_interface.get_output_value("user")
-            self.logger.info("Telescope is locked by %s." % _user)
+            self.logger.info("Telescope is locked by %s.", _user)
             # assign values
             return _user == user["id"]
         except Exception as e:
-            self.logger.error("Could not get telescope lock info. Exception (%s)." % e)
+            self.logger.error("Could not get telescope lock info. Exception (%s).", e)
         return False
 
     def is_locked(self):
@@ -1601,11 +1608,11 @@ class IxchelCommand:
             self.telescope.get_lock(telescope_interface)
             # assign values
             _user = telescope_interface.get_output_value("user")
-            self.logger.info("Telescope is locked by %s." % _user)
+            self.logger.info("Telescope is locked by %s.", _user)
             # assign values
             return _user is not None
         except Exception as e:
-            self.logger.error("Could not get telescope lock info. Exception (%s)." % e)
+            self.logger.error("Could not get telescope lock info. Exception (%s).", e)
         return True
 
     def get_clearsky(self, command, user):
@@ -1666,8 +1673,7 @@ class IxchelCommand:
                 )
         except Exception as e:
             self.logger.error(
-                "Failed to obtain image from observatory dome camera. Exception (%s)."
-                % (e)
+                "Failed to obtain image from observatory dome camera. Exception (%s).", e
             )
 
     def get_skycam(self, command, user):
@@ -1797,12 +1803,12 @@ class IxchelCommand:
                     max_alt = altaz.alt.degree
                     target = (name, ra, dec)
             self.logger.info(
-                "The target star is %s (alt=%f deg)." % (target[0], max_alt)
+                "The target star is %s (alt=%f deg).", target[0], max_alt
             )
 
             # get current focus setting
             focus_pos_original = self._get_focus()
-            self.logger.info("The current focus position is %d." % focus_pos_original)
+            self.logger.info("The current focus position is %d.", focus_pos_original)
 
             # focus setting range
             focus_pos_start = int(
@@ -1986,7 +1992,7 @@ class IxchelCommand:
             return fwhm
 
         except Exception as e:
-            self.logger.error("Exception (%s)." % (e))
+            self.logger.error("Exception (%s).", e)
             raise  # reraise
 
     def to_stars(self, command, user):
@@ -2102,127 +2108,105 @@ class IxchelCommand:
             self.preview = preview_old
 
     def get_weather(self, command, user):
-        base_url = self.config.get("weatherbit", "base_url")
-        icon_base_url = self.config.get("weatherbit", "icon_base_url")
-        api_key = self.config.get("weatherbit", "api_key")
-        latitude = self.config.get("telescope", "latitude")
-        longitude = self.config.get("telescope", "longitude")
-        # user the OpenWeatherMap API
-        url = "%scurrent?lat=%s&lon=%s&units=I&key=%s" % (
-            base_url,
-            latitude,
-            longitude,
-            api_key,
-        )
+        """Gets the grid-based 48h weather forecast as an image, and sends it to Slack
+        """
+        # Show a nice forecast image from NWS
+        # This is the point forecast for the closest gridpoint to the telescope's coordinates (38.259, -122.440)
+        url = self.config.get("weather", "weather_graph_url", "https://forecast.weather.gov/meteograms/Plotter.php?lat=38.259&lon=-122.44&wfo=MTR&zcode=CAZ506&gset=18&gdiff=3&unit=0&tinfo=PY8&ahour=0&pcmd=11011111111110100000000000000000000000000000000000000000000&lg=en&indu=1!1!1!&dd=&bw=&hrspan=48&pqpfhr=6&psnwhr=6")
+        weather_image_path = self.config.get("weather", "weather_graph_file_path", "./") + "weather.png"
+        
         try:
-            r = requests.post(url)
+            r = requests.get(url, headers={"User-Agent": "stoneedgeobservatory@uchicago.edu"})
             if r.ok:
-                data = r.json()
-                weather = data.get("data")[0]
-                station = weather.get("city_name")
-                clouds = weather.get("clouds")
-                conditions = weather.get("weather").get("description")
-                temp = weather.get("temp")
-                wind_speed = weather.get("wind_spd")
-                wind_direction = weather.get("wind_cdir")
-                humidity = weather.get("rh")
-                icon_url = icon_base_url + weather.get("weather").get("icon") + ".png"
-                # send weather report to Slack
-                self.slack.send_message(
-                    "", [{"image_url": "%s" % icon_url, "title": "Current Weather:"}]
-                )
-                self.slack.send_message(">Station: %s" % station)
-                self.slack.send_message(">Conditions: %s" % conditions)
-                self.slack.send_message(">Temperature: %.1f° F" % temp)
-                self.slack.send_message(">Clouds: %0.1f%%" % clouds)
-                self.slack.send_message(">Wind Speed: %.1f mph" % wind_speed)
-                self.slack.send_message(">Wind Direction: %s" % wind_direction)
-                self.slack.send_message(">Humidity: %.1f%%" % humidity)
-            else:
-                self.handle_error(
-                    command.group(0),
-                    "Weatherbit API request (%s) failed (%d)." % (url, r.status_code),
-                )
+                # Open a file for the image
+                weather_image = open(weather_image_path, "wb")
+                # Write to the open file
+                weather_image.write(r.content)
+                weather_image.close()
+
+                self.slack.send_file(weather_image_path, "Point Forecast (PT): 2 Miles SSE Sonoma CA (38.27N 122.45W)")
+
         except Exception as e:
             self.handle_error(
                 command.group(0),
-                "Weatherbit API request (%s) failed. Exception (%s)." % (url, e),
+                "NWS Image API request (%s) failed. Exception (%s)." % (url, e),
             )
 
-    # https://openweathermap.org/forecast5
+    # New NWS API
     def get_forecast(self, command, user):
-        base_url = self.config.get("openweathermap", "base_url")
-        icon_base_url = self.config.get("openweathermap", "icon_base_url")
-        api_key = self.config.get("openweathermap", "api_key")
-        max_forecasts = int(self.config.get("openweathermap", "max_forecasts", 5))
-        latitude = self.config.get("telescope", "latitude")
-        longitude = self.config.get("telescope", "longitude")
-        timezone = self.config.get("telescope", "timezone", "GMT")
-        # user the OpenWeatherMap API
-        url = "%sforecast?lat=%s&lon=%s&units=imperial&APPID=%s" % (
-            base_url,
-            latitude,
-            longitude,
-            api_key,
-        )
+        """Gets the hourly forecast for the next few hours, and writes it to Slack
+        """
+
+        # use the Weather.gov / NWS API
+        url = self.config.get("weather", "gridpoint_hourly_url", "https://api.weather.gov/gridpoints/MTR/88,127/forecast/hourly")
+        url_summaries = self.config.get("weather", "gridpoint_summary_url", "https://api.weather.gov/gridpoints/MTR/88,127/forecast")
+
         try:
-            r = requests.post(url)
+            r = requests.get(url, headers={"User-Agent": "stoneedgeobservatory@uchicago.edu"})
+            time.sleep(1)
+            r_s = requests.get(url_summaries, headers={"User-Agent": "stoneedgeobservatory@uchicago.edu"})
         except Exception as e:
-            self.logger.error("OpenWeatherMap API request (%s) failed." % url)
+            self.logger.error("NWS API request (%s) failed.", url)
             self.handle_error(command.group(0), e)
             return
         if r.ok:
             data = r.json()
-            station = data.get("city").get("name", "Unknown")
-            forecasts = data.get("list")
-            self.slack.send_message("Weather Forecast:")
-            self.slack.send_message(">Station: %s" % station)
-            for forecast in forecasts[:max_forecasts]:
-                dt = datetime.datetime.utcfromtimestamp(
-                    forecast.get("dt", time.time())
-                ).replace(tzinfo=pytz.utc)
-                dt_local = dt.astimezone(pytz.timezone(timezone))
-                icon_url = (
-                    icon_base_url
-                    + forecast.get("weather")[0].get("icon", "01d")
-                    + ".png"
-                )
-                weather = forecast.get("weather")[0].get("main", "Unknown")
-                clouds = int(forecast.get("clouds").get("all", 0))
-                # self.slack.send_message('Date/Time: %s (%s)' % (dt_local.strftime(
-                #    "%A, %B %d, %Y %I:%M%p"), dt.strftime("%A, %B %d, %Y %I:%M%p UTC")))
-                dt_string = "%s (%s)" % (
-                    dt_local.strftime("%I:%M%p"),
-                    dt.strftime("%I:%M%p UTC"),
-                )
-                # self.slack.send_message('Clouds: %0.1f%%' % clouds)
-                if clouds > 0:
-                    self.slack.send_message(
-                        "",
-                        [
-                            {
-                                "image_url": "%s" % icon_url,
-                                "title": "%s (%d%%) @ %s"
-                                % (weather, clouds, dt_string),
-                            }
-                        ],
-                    )
+            forecasts = data["properties"]["periods"]
+            forecast_blocks = []
+
+            summary_text = "NWS Station MTR"
+
+            if r_s.ok:
+                data_s = r_s.json()
+                summary_text += "\n" + data_s["properties"]["periods"][0]["name"] + ": "
+                summary_text += data_s["properties"]["periods"][0]["detailedForecast"]
+
+            forecast_blocks.append({
+                            "type": "context",
+                            "elements": [
+                                {
+                                    "type": "plain_text",
+                                    "text": summary_text,
+                                    "emoji": True,
+                                }
+                            ],
+                        })
+
+            for forecast in forecasts[1:7]: # About the next five hours or so
+                dt_local = datetime.datetime.fromisoformat(forecast["startTime"])
+                dt_utc = dt_local.astimezone(pytz.timezone("UTC"))
+                dt_current = datetime.datetime.now().astimezone(pytz.timezone("US/Pacific"))
+                hours_diff = (dt_local - dt_current).seconds // 3600
+
+                if hours_diff == 23:
+                    diff_string = "*Last hour:*"
+                elif hours_diff == 0:
+                    diff_string = "*This hour:*"
                 else:
-                    self.slack.send_message(
-                        "",
-                        [
-                            {
-                                "image_url": "%s" % icon_url,
-                                "title": "%s @ %s" % (weather, dt_string),
-                            }
-                        ],
-                    )
-                time.sleep(1)  # don't trigger the Slack bandwidth threshold
+                    diff_string = "*In " + str(hours_diff) + " hour(s):*"
+
+
+                weather_desc = forecast["shortForecast"]
+                weather_temp = forecast["temperature"]
+                weather_precip = forecast["probabilityOfPrecipitation"]["value"]
+
+                forecast_blocks.append(
+                    {
+                        "type": "section",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text":  f"{diff_string}\t| *{weather_temp} F* | {weather_precip}% chance of rain | {weather_desc}",
+                        },
+                    }
+                )
+
+            self.slack.send_message("", blocks=forecast_blocks)
+
         else:
             self.logger.error(
-                "OpenWeatherMap API request (%s) failed (%d)." % (url, r.status_code)
+                "NWS API request (%s) failed (%d).", url, r.status_code
             )
-            self.handle_error(command.group(0), e)
+            self.handle_error(command.group(0), (url, r.status_code))
 
     def getDoAbort(self):
         global doAbort
