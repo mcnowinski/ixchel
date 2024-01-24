@@ -2107,7 +2107,7 @@ class IxchelCommand:
         finally:
             self.preview = preview_old
 
-    def get_weather(self, command, user):
+    def get_forecast(self, command, user):
         """Gets the grid-based 48h weather forecast as an image, and sends it to Slack
         """
         # Show a nice forecast image from NWS
@@ -2133,7 +2133,7 @@ class IxchelCommand:
             )
 
     # New NWS API
-    def get_forecast(self, command, user):
+    def get_weather(self, command, user):
         """Gets the hourly forecast for the next few hours, and writes it to Slack
         """
 
@@ -2265,7 +2265,7 @@ class IxchelCommand:
                     "regex": r"^\\connect$",
                     "function": self.connect,
                     "description": "`\\connect` attempts to reconnect to the telescope via SSH.",
-                    "hide": True,
+                    "hide": False,
                 },
                 {
                     "regex": r"^\\find\s(.+)$",
@@ -2412,7 +2412,7 @@ class IxchelCommand:
                 {
                     "regex": r"^\\forecast$",
                     "function": self.get_forecast,
-                    "description": "`\\forecast` shows the hourly weather forecast",
+                    "description": "`\\forecast` shows the grid-based 48-hour forecast",
                     "hide": False,
                 },
                 {
@@ -2448,7 +2448,7 @@ class IxchelCommand:
                 {
                     "regex": r"^\\weather$",
                     "function": self.get_weather,
-                    "description": "`\\weather` shows the current weather conditions",
+                    "description": "`\\weather` shows the current weather conditions, along with the next few hours of precipitation and cloud cover",
                     "hide": False,
                 },
                 {
