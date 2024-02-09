@@ -79,7 +79,7 @@ class Ixchel:
                 # self.slack.send_typing()
                 self.process(message)
             else:  # message posted directly to bot
-                self.logger.warning('Received direct message.')
+                self.logger.warning('Received direct message. ChannelID = %s with message = %s' % (self.channel_id, repr(message)))
                 self.slack.send_message('Please use the channel #%s for communications with %s.' % (
                     self.channel, self.bot_name), None, message['channel'], self.bot_name)
 
